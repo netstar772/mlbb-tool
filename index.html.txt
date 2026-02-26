@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLBB Meta Counter Tool 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid #334155; }
+        .accent-text { color: #38bdf8; }
+        select { background: #1e293b; border: 1px solid #475569; padding: 10px; border-radius: 8px; width: 100%; color: white; margin-bottom: 15px; }
+        .btn-generate { background: linear-gradient(90deg, #0ea5e9, #2563eb); transition: transform 0.2s; }
+        .btn-generate:hover { transform: scale(1.02); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-2xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold italic tracking-tighter">MLBB <span class="accent-text">COUNTER-PRO</span></h1>
+            <p class="text-slate-400 text-sm">February 2026 Meta Patch 2.1.47+</p>
+        </header>
+
+        <div class="card p-6 rounded-2xl shadow-2xl mb-6">
+            <label class="block text-sm font-semibold mb-2">1. ENEMY PICKED HERO</label>
+            <select id="enemyHero">
+                <option value="">Select Enemy Hero...</option>
+                <optgroup label="S-Tier (Priority)">
+                    <option value="Sora">Sora (New/OP)</option>
+                    <option value="Hayabusa">Hayabusa (Revamped)</option>
+                    <option value="Julian">Julian</option>
+                    <option value="Gloo">Gloo</option>
+                    <option value="Ixia">Ixia</option>
+                </optgroup>
+                <optgroup label="Common Meta">
+                    <option value="Fredrinn">Fredrinn</option>
+                    <option value="Wanwan">Wanwan</option>
+                    <option value="Angela">Angela</option>
+                    <option value="Karrie">Karrie</option>
+                    <option value="Tigreal">Tigreal</option>
+                </optgroup>
+            </select>
+
+            <label class="block text-sm font-semibold mb-2">2. YOUR ASSIGNED LANE</label>
+            <select id="myLane">
+                <option value="Jungle">Jungle</option>
+                <option value="Gold Lane">Gold Lane</option>
+                <option value="EXP Lane">EXP Lane</option>
+                <option value="Mid Lane">Mid Lane</option>
+                <option value="Roam">Roam</option>
+            </select>
+
+            <button onclick="generatePick()" class="btn-generate w-full py-4 rounded-xl font-bold text-lg shadow-lg">GENERATE COUNTER PICK</button>
+        </div>
+
+        <div id="resultArea" class="hidden">
+            <div class="card p-6 rounded-2xl border-l-4 border-blue-500">
+                <h2 class="text-xl font-bold mb-4">Recommended Pick: <span id="recHero" class="accent-text text-2xl">--</span></h2>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Emblem Set</p>
+                        <p id="recEmblem" class="font-medium">--</p>
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Battle Spell</p>
+                        <p id="recSpell" class="font-medium">--</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 bg-slate-800/50 p-3 rounded-lg">
+                    <p class="text-xs text-slate-400 uppercase font-bold mb-2">Core Build (Anti-Meta)</p>
+                    <p id="recBuild" class="text-sm italic">--</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const metaData = {
+            "Sora": {
+                "Jungle": { hero: "Hayabusa", emblem: "Assassin (Season Master)", spell: "Retribution", build: "Magic Shoes, Sky Piercer, Heptaseas, Malefic Roar" },
+                "EXP Lane": { hero: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", build: "Warrior Boots, Clock of Destiny, Oracle, Dominance Ice" },
+                "Roam": { hero: "Minsitthar", emblem: "Tank (Concussive)", spell: "Flicker", build: "Tough Boots, Dominance Ice, Antique Cuirass" }
+            },
+            "Hayabusa": {
+                "Jungle": { hero: "Fredrinn", emblem: "Tank (Shockwave)", spell: "Retribution", build: "Tough Boots, Guardian Helmet, Antique Cuirass" },
+                "Gold Lane": { hero: "Melissa", emblem: "Marksman (Weakness Finder)", spell: "Inspire", build: "Corrosion Scythe, Demon Hunter, Golden Staff" },
+                "Roam": { hero: "Kalea", emblem: "Support (Focusing Mark)", spell: "Petrify", build: "Rapid Boots, Flask of Oasis, Dominance Ice" }
+            },
+            "Gloo": {
+                "EXP Lane": { hero: "Uranus", emblem: "Tank (Brave Smite)", spell: "Vengeance", build: "Tough Boots, Enchanted Talisman, Oracle, Radiant Armor" },
+                "Mid Lane": { hero: "Farimins", emblem: "Mage (Lethal Ignition)", spell: "Flicker", build: "Arcane Boots, Lightning Truncheon, Holy Crystal" }
+            },
+            "default": {
+                "Jungle": { hero: "Leomord (S-Tier)", emblem: "Assassin (Season Master)", spell: "Retribution", build: "Warrior Boots, Bloodlust Axe, Hunter Strike, Despair" },
+                "Gold Lane": { hero: "Karrie (True Damage)", emblem: "Marksman (Quantum Charge)", spell: "Flicker", build: "Corrosion Scythe, Golden Staff, Demon Hunter Sword" },
+                "EXP Lane": { hero: "Lapu-Lapu", emblem: "Fighter (Brave Smite)", spell: "Petrify", build: "Warrior Boots, Bloodlust Axe, Hunter Strike, Oracle" },
+                "Mid Lane": { hero: "Kadita", emblem: "Mage (Lethal Ignition)", spell: "Petrify", build: "Arcane Boots, Lightning Truncheon, Genius Wand, Holy Crystal" },
+                "Roam": { hero: "Tigreal", emblem: "Tank (Concussive)", spell: "Flicker", build: "Tough Boots, Dominance Ice, Athena's Shield, Immortality" }
+            }
+        };
+
+        function generatePick() {
+            const enemy = document.getElementById('enemyHero').value;
+            const lane = document.getElementById('myLane').value;
+            const resultDiv = document.getElementById('resultArea');
+            
+            let pick;
+            if (metaData[enemy] && metaData[enemy][lane]) {
+                pick = metaData[enemy][lane];
+            } else {
+                pick = metaData["default"][lane];
+            }
+
+            document.getElementById('recHero').innerText = pick.hero;
+            document.getElementById('recEmblem').innerText = pick.emblem;
+            document.getElementById('recSpell').innerText = pick.spell;
+            document.getElementById('recBuild').innerText = pick.build;
+
+            resultDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
