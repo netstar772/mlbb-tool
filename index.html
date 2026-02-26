@@ -3,125 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB AI Screenshot Draft Helper</title>
+    <title>MLBB AI PRO HELPER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://unpkg.com/tesseract.js@v4.0.1/dist/tesseract.min.js'></script>
     <style>
-        body { background: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid #334155; }
-        .loader { border: 4px solid #1e293b; border-top: 4px solid #06b6d4; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .item-box { width: 50px; height: 50px; border-radius: 10px; border: 1px solid #475569; background: #0f172a; }
+        body { background: #020617; color: white; font-family: 'Inter', sans-serif; }
+        .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 24px; }
+        .preview-box { border: 2px dashed #334155; border-radius: 16px; overflow: hidden; min-height: 150px; display: flex; align-items: center; justify-content: center; background: #020617; }
+        .item-icon { width: 55px; height: 55px; background: #1e293b; border: 1px solid #38bdf8; border-radius: 10px; font-size: 8px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; padding: 4px; }
+        .btn-main { background: linear-gradient(90deg, #06b6d4, #3b82f6); transition: all 0.3s; }
+        .btn-main:hover { opacity: 0.9; transform: translateY(-2px); }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center">
+<body class="p-4 flex justify-center">
 
-    <div class="w-full max-w-lg">
-        <header class="text-center my-8">
-            <h1 class="text-3xl font-black text-cyan-400 italic italic tracking-tighter">MLBB DRAFT PICK HELPER </h1>
-            <p class="text-slate-500 text-[10px] uppercase tracking-widest">Feb 2026 Meta Analysis</p>
+    <div class="w-full max-w-md">
+        <header class="text-center my-6">
+            <h1 class="text-2xl font-black italic tracking-tighter text-cyan-400">MLBB AI COUNTER PRO</h1>
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest">February 2026 Meta Analysis</p>
         </header>
 
-        <div class="glass p-8 rounded-3xl text-center border-dashed border-2 border-slate-700">
-            <p class="text-sm text-slate-400 mb-4 font-medium">Screenshot ကို ရိုက်ပြီး ဒီမှာ တင်လိုက်ပါ</p>
-            <input type="file" id="screenshotInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('screenshotInput').click()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black py-4 px-8 rounded-2xl w-full shadow-lg transition-all active:scale-95">
-                UPLOAD SCREENSHOT
-            </button>
+        <div class="card p-6 shadow-2xl mb-6">
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">1. Screenshot တင်ပါ</p>
+            <div class="preview-box mb-4" id="dropZone">
+                <img id="imagePreview" class="hidden w-full h-full object-contain">
+                <p id="placeholderText" class="text-slate-500 text-sm">No Image Selected</p>
+            </div>
             
-            <div id="loading" class="hidden flex flex-col items-center mt-6">
-                <div class="loader mb-2"></div>
-                <p class="text-xs text-cyan-400 animate-pulse">AI is scanning heroes...</p>
-            </div>
-        </div>
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('fileInput').click()" class="w-full py-3 bg-slate-800 rounded-xl text-sm font-bold border border-slate-700 mb-4 hover:bg-slate-700">
+                CHOOSE SCREENSHOT
+            </button>
 
-        <div class="mt-6 flex gap-4">
-            <select id="userLane" class="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
-                <option value="Jungle">Your Role: Jungle</option>
-                <option value="Gold Lane">Your Role: Gold Lane</option>
-                <option value="EXP Lane">Your Role: EXP Lane</option>
-                <option value="Mid Lane">Your Role: Mid Lane</option>
-                <option value="Roam">Your Role: Roam</option>
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">2. Role ရွေးပါ</p>
+            <select id="userLane" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none mb-6">
+                <option value="Jungle">Jungle</option>
+                <option value="Gold Lane">Gold Lane</option>
+                <option value="EXP Lane">EXP Lane</option>
+                <option value="Mid Lane">Mid Lane</option>
+                <option value="Roam">Roam</option>
             </select>
+
+            <button id="generateBtn" onclick="processAnalysis()" class="btn-main w-full py-4 rounded-2xl font-black text-white shadow-lg active:scale-95 disabled:opacity-50">
+                GENERATE BEST PICK
+            </button>
         </div>
 
-        <div id="result" class="hidden mt-8 glass p-6 rounded-3xl border-t-4 border-green-400 animate-in fade-in duration-700">
-            <div class="flex items-center gap-4 mb-6">
-                <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-lg" id="resInitial">?</div>
-                <div>
-                    <p class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Meta Recommendation</p>
-                    <h2 id="resHero" class="text-3xl font-black text-white leading-tight">--</h2>
-                </div>
-            </div>
+        <div id="loading" class="hidden text-center mb-6">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500 mb-2"></div>
+            <p class="text-xs text-cyan-400 uppercase font-bold tracking-widest">AI Scanning Match Data...</p>
+        </div>
 
-            <div class="grid grid-cols-2 gap-3 mb-6">
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-gray-500 font-bold mb-1">EMBLEM</p>
-                    <p id="resEmblem" class="text-xs font-bold text-white">--</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-gray-500 font-bold mb-1">BATTLE SPELL</p>
-                    <p id="resSpell" class="text-xs font-bold text-white">--</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                <p class="text-[10px] text-gray-500 font-bold mb-3 uppercase">Counter Build Items</p>
-                <div id="itemIcons" class="flex gap-2">
+        <div id="resultArea" class="hidden animate-in fade-in slide-in-from-bottom-4">
+            <div class="card p-6 border-t-4 border-green-400">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg" id="initial">?</div>
+                    <div>
+                        <span class="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-1 rounded font-bold uppercase">Best Pick</span>
+                        <h2 id="recName" class="text-3xl font-black tracking-tighter">--</h2>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">Emblem Set</p>
+                        <p id="recEmblem" class="text-xs font-bold text-white">--</p>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">Battle Spell</p>
+                        <p id="recSpell" class="text-xs font-bold text-white">--</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    <p class="text-[9px] text-gray-500 font-bold uppercase mb-3">Counter Build (Patch 2.1)</p>
+                    <div id="itemContainer" class="flex flex-wrap gap-2">
+                        </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const input = document.getElementById('screenshotInput');
-        
-        input.addEventListener('change', function() {
-            const file = this.files[0];
-            if (!file) return;
+        const fileInput = document.getElementById('fileInput');
+        const imgPrev = document.getElementById('imagePreview');
+        const placeholder = document.getElementById('placeholderText');
+
+        fileInput.onchange = e => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = f => {
+                    imgPrev.src = f.target.result;
+                    imgPrev.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        };
+
+        async function processAnalysis() {
+            const file = fileInput.files[0];
+            if (!file) return alert("Please upload a screenshot first!");
 
             document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('result').classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
 
-            Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
-            .then(({ data: { text } }) => {
-                analyzeOCR(text.toLowerCase());
-            })
-            .finally(() => {
-                document.getElementById('loading').classList.add('hidden');
-            });
-        });
-
-        function analyzeOCR(text) {
+            // Scan using Tesseract
+            const { data: { text } } = await Tesseract.recognize(file, 'eng');
+            const foundText = text.toLowerCase();
             const lane = document.getElementById('userLane').value;
-            let rec = { name: "Martis", emblem: "Assassin (Season Master)", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "DHS"] };
 
-            // Logic matching for 2026 Meta
-            if(text.includes("sora") || text.includes("ling")) {
-                if(lane === "EXP Lane") rec = { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: ["Clock of Destiny", "Oracle", "Antique Cuirass"] };
-                if(lane === "Jungle") rec = { name: "Hayabusa", emblem: "Assassin", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "Malefic Roar"] };
-            } else if(text.includes("franco") || text.includes("atlas")) {
-                rec = { name: "Diggie", emblem: "Support", spell: "Flicker", items: ["Flask of Oasis", "Fleeting Time", "Oracle"] };
+            // Simple Analysis Logic
+            let pick = { name: "Martis", emblem: "Assassin (Season Master)", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "DHS"] };
+
+            if(foundText.includes("sora") || foundText.includes("fanny")) {
+                if(lane === "EXP Lane") pick = { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: ["Clock of Destiny", "Oracle", "Radiant Armor"] };
+                if(lane === "Jungle") pick = { name: "Hayabusa", emblem: "Assassin", spell: "Retri", items: ["Sky Piercer", "Malefic Roar", "Blade of Heptaseas"] };
             } else if(lane === "Gold Lane") {
-                rec = { name: "Ixia", emblem: "Marksman (Quantum Charge)", spell: "Flicker", items: ["Corrosion Scythe", "Golden Staff", "Demon Hunter"] };
+                pick = { name: "Ixia", emblem: "Marksman (Quantum Charge)", spell: "Flicker", items: ["Corrosion Scythe", "Golden Staff", "Demon Hunter"] };
+            } else if(lane === "Roam") {
+                pick = { name: "Tigreal", emblem: "Tank (Tenacity)", spell: "Flicker", items: ["Tough Boots", "Dominance Ice", "Antique Cuirass"] };
             }
 
             // Display Results
-            document.getElementById('resHero').innerText = rec.name;
-            document.getElementById('resInitial').innerText = rec.name.charAt(0);
-            document.getElementById('resEmblem').innerText = rec.emblem;
-            document.getElementById('resSpell').innerText = rec.spell;
+            document.getElementById('recName').innerText = pick.name;
+            document.getElementById('initial').innerText = pick.name.charAt(0);
+            document.getElementById('recEmblem').innerText = pick.emblem;
+            document.getElementById('recSpell').innerText = pick.spell;
 
-            const items = document.getElementById('itemIcons');
+            const items = document.getElementById('itemContainer');
             items.innerHTML = '';
-            rec.items.forEach(i => {
-                const box = document.createElement('div');
-                box.className = 'item-box flex items-center justify-center text-[7px] text-center font-bold p-1 leading-tight text-white uppercase';
-                box.innerText = i;
-                items.appendChild(box);
+            pick.items.forEach(i => {
+                const div = document.createElement('div');
+                div.className = 'item-icon';
+                div.innerText = i;
+                items.appendChild(div);
             });
 
-            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('resultArea').classList.remove('hidden');
         }
     </script>
 </body>
