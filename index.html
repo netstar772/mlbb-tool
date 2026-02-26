@@ -3,130 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB PRO Counter Draft 2026</title>
+    <title>MLBB AI Screenshot Draft Helper</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src='https://unpkg.com/tesseract.js@v4.0.1/dist/tesseract.min.js'></script>
     <style>
         body { background: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid #475569; }
-        .hero-img { width: 60px; height: 60px; border-radius: 12px; border: 2px solid #38bdf8; object-fit: cover; }
-        .item-icon { width: 45px; height: 45px; border-radius: 8px; background: #1e293b; display: inline-block; margin-right: 5px; border: 1px solid #64748b; }
-        .badge { background: #0ea5e9; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid #334155; }
+        .loader { border: 4px solid #1e293b; border-top: 4px solid #06b6d4; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .item-box { width: 50px; height: 50px; border-radius: 10px; border: 1px solid #475569; background: #0f172a; }
     </style>
 </head>
-<body class="p-4 md:p-10 min-h-screen flex justify-center">
+<body class="p-4 flex flex-col items-center">
 
-    <div class="w-full max-w-2xl">
-        <header class="text-center mb-10">
-            <h1 class="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">MLBB DRAFT HELPER v2.0</h1>
-            <p class="text-slate-500 text-xs mt-2 uppercase tracking-widest">February 2026 Pro Meta Patch</p>
+    <div class="w-full max-w-lg">
+        <header class="text-center my-8">
+            <h1 class="text-3xl font-black text-cyan-400 italic italic tracking-tighter">MLBB AI SCANNER</h1>
+            <p class="text-slate-500 text-[10px] uppercase tracking-widest">Feb 2026 Meta Analysis</p>
         </header>
 
-        <div class="glass p-6 rounded-3xl shadow-2xl mb-8">
-            <label class="block text-sm font-bold text-slate-300 mb-2 uppercase italic">1. Enemy Team Picked (Up to 5)</label>
-            <input type="text" id="enemyInput" placeholder="e.g. Franco, Pharsa, Bruno, Sora" 
-                   class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl mb-6 focus:ring-2 focus:ring-cyan-500 outline-none text-white placeholder-slate-600">
-
-            <label class="block text-sm font-bold text-slate-300 mb-2 uppercase italic">2. Your Assigned Lane</label>
-            <select id="myLane" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl mb-6 text-white outline-none">
-                <option value="Jungle">Jungle</option>
-                <option value="Gold Lane">Gold Lane</option>
-                <option value="EXP Lane">EXP Lane</option>
-                <option value="Mid Lane">Mid Lane</option>
-                <option value="Roam">Roam (Tank/Support)</option>
-            </select>
-
-            <button onclick="analyzeTeam()" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 py-4 rounded-2xl font-black text-white hover:opacity-90 transition-all shadow-lg active:scale-95">
-                ANALYZE & GENERATE COUNTER
+        <div class="glass p-8 rounded-3xl text-center border-dashed border-2 border-slate-700">
+            <p class="text-sm text-slate-400 mb-4 font-medium">Screenshot ကို ရိုက်ပြီး ဒီမှာ တင်လိုက်ပါ</p>
+            <input type="file" id="screenshotInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('screenshotInput').click()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black py-4 px-8 rounded-2xl w-full shadow-lg transition-all active:scale-95">
+                UPLOAD SCREENSHOT
             </button>
+            
+            <div id="loading" class="hidden flex flex-col items-center mt-6">
+                <div class="loader mb-2"></div>
+                <p class="text-xs text-cyan-400 animate-pulse">AI is scanning heroes...</p>
+            </div>
         </div>
 
-        <div id="resultArea" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div class="glass p-6 rounded-3xl border-t-4 border-cyan-400 relative overflow-hidden">
-                <div class="flex items-center gap-4 mb-6">
-                    <div id="heroIcon" class="hero-img bg-slate-800 flex items-center justify-center font-bold text-xl">?</div>
-                    <div>
-                        <span class="badge mb-1">Recommended Pick</span>
-                        <h2 id="recHero" class="text-4xl font-black tracking-tighter text-white">--</h2>
-                    </div>
-                </div>
+        <div class="mt-6 flex gap-4">
+            <select id="userLane" class="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
+                <option value="Jungle">Your Role: Jungle</option>
+                <option value="Gold Lane">Your Role: Gold Lane</option>
+                <option value="EXP Lane">Your Role: EXP Lane</option>
+                <option value="Mid Lane">Your Role: Mid Lane</option>
+                <option value="Roam">Your Role: Roam</option>
+            </select>
+        </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                        <p class="text-[10px] text-cyan-400 font-bold uppercase mb-2">Emblem Set</p>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-blue-900/30 rounded-full flex items-center justify-center text-xl">🛡️</div>
-                            <p id="recEmblem" class="font-bold text-sm">--</p>
-                        </div>
-                    </div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                        <p class="text-[10px] text-cyan-400 font-bold uppercase mb-2">Battle Spell</p>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-yellow-900/30 rounded-full flex items-center justify-center text-xl">⚡</div>
-                            <p id="recSpell" class="font-bold text-sm">--</p>
-                        </div>
-                    </div>
+        <div id="result" class="hidden mt-8 glass p-6 rounded-3xl border-t-4 border-green-400 animate-in fade-in duration-700">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-lg" id="resInitial">?</div>
+                <div>
+                    <p class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Meta Recommendation</p>
+                    <h2 id="resHero" class="text-3xl font-black text-white leading-tight">--</h2>
                 </div>
+            </div>
 
-                <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                    <p class="text-[10px] text-cyan-400 font-bold uppercase mb-3">Counter Build (Meta 2026)</p>
-                    <div id="itemIcons" class="flex flex-wrap gap-2 mb-3">
-                        </div>
-                    <p id="recBuildDesc" class="text-xs text-slate-400 italic">--</p>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[10px] text-gray-500 font-bold mb-1">EMBLEM</p>
+                    <p id="resEmblem" class="text-xs font-bold text-white">--</p>
                 </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[10px] text-gray-500 font-bold mb-1">BATTLE SPELL</p>
+                    <p id="resSpell" class="text-xs font-bold text-white">--</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                <p class="text-[10px] text-gray-500 font-bold mb-3 uppercase">Counter Build Items</p>
+                <div id="itemIcons" class="flex gap-2">
+                    </div>
             </div>
         </div>
     </div>
 
     <script>
-        const heroData = {
-            "Sora": { counter: "Phoveus", jungle: "Hayabusa", gold: "Claude" },
-            "Franco": { counter: "Diggie", jungle: "Martis", roam: "Tigreal" },
-            "Pharsa": { mid: "Kagura", jungle: "Helcurt", gold: "Ixia" },
-            "Bruno": { gold: "Claude", jungle: "Saber", roam: "Gloo" },
-            "Gloo": { exp: "Uranus", roam: "Diggie", mid: "Faramis" },
-            "default": {
-                "Jungle": { name: "Yi Sun-shin", emblem: "Assassin (Season Master)", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "Malefic Roar"], desc: "High burst & mobility for 2026 meta." },
-                "Gold Lane": { name: "Ixia", emblem: "Marksman (Quantum Charge)", spell: "Flicker", items: ["Corrosion Scythe", "Golden Staff", "DHS"], desc: "Best AoE damage against tight formations." },
-                "EXP Lane": { name: "Terizla", emblem: "Fighter (Brave Smite)", spell: "Flicker", items: ["Bloodlust Axe", "Dominance Ice", "Oracle"], desc: "High durability & CC for teamfights." },
-                "Mid Lane": { name: "Zhuxin", emblem: "Mage (Lethal Ignition)", spell: "Flicker", items: ["Lightning Truncheon", "Holy Crystal", "Divine Glaive"], desc: "Top tier burst mage right now." },
-                "Roam": { name: "Tigreal", emblem: "Tank (Concussive)", spell: "Flicker", items: ["Tough Boots", "Dominance Ice", "Antique Cuirass"], desc: "Unstoppable CC combo." }
-            }
-        };
+        const input = document.getElementById('screenshotInput');
+        
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
 
-        function analyzeTeam() {
-            const input = document.getElementById('enemyInput').value.toLowerCase();
-            const lane = document.getElementById('myLane').value;
-            const resultDiv = document.getElementById('resultArea');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
 
-            // Simple logic: check if any entered name matches our counter list
-            let recommendation = heroData["default"][lane];
-            
-            // Logic to find a specific counter based on input
-            if(input.includes("sora")) {
-                if(lane === "EXP Lane") recommendation = { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: ["Clock of Destiny", "Oracle", "Radiant Armor"], desc: "Best counter for Sora's dashes." };
-                if(lane === "Jungle") recommendation = { name: "Hayabusa", emblem: "Assassin", spell: "Retri", items: ["Sky Piercer", "Malefic Roar"], desc: "One-shot Sora before she can react." };
-            } else if(input.includes("franco") || input.includes("tigreal")) {
-                if(lane === "Roam") recommendation = { name: "Diggie", emblem: "Support", spell: "Flicker", items: ["Flask of Oasis", "Fleeting Time"], desc: "Cleanse all CC for your team." };
+            Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
+            .then(({ data: { text } }) => {
+                analyzeOCR(text.toLowerCase());
+            })
+            .finally(() => {
+                document.getElementById('loading').classList.add('hidden');
+            });
+        });
+
+        function analyzeOCR(text) {
+            const lane = document.getElementById('userLane').value;
+            let rec = { name: "Martis", emblem: "Assassin (Season Master)", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "DHS"] };
+
+            // Logic matching for 2026 Meta
+            if(text.includes("sora") || text.includes("ling")) {
+                if(lane === "EXP Lane") rec = { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: ["Clock of Destiny", "Oracle", "Antique Cuirass"] };
+                if(lane === "Jungle") rec = { name: "Hayabusa", emblem: "Assassin", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "Malefic Roar"] };
+            } else if(text.includes("franco") || text.includes("atlas")) {
+                rec = { name: "Diggie", emblem: "Support", spell: "Flicker", items: ["Flask of Oasis", "Fleeting Time", "Oracle"] };
+            } else if(lane === "Gold Lane") {
+                rec = { name: "Ixia", emblem: "Marksman (Quantum Charge)", spell: "Flicker", items: ["Corrosion Scythe", "Golden Staff", "Demon Hunter"] };
             }
 
             // Display Results
-            document.getElementById('recHero').innerText = recommendation.name;
-            document.getElementById('recEmblem').innerText = recommendation.emblem;
-            document.getElementById('recSpell').innerText = recommendation.spell;
-            document.getElementById('recBuildDesc').innerText = recommendation.desc;
-            document.getElementById('heroIcon').innerText = recommendation.name.charAt(0);
+            document.getElementById('resHero').innerText = rec.name;
+            document.getElementById('resInitial').innerText = rec.name.charAt(0);
+            document.getElementById('resEmblem').innerText = rec.emblem;
+            document.getElementById('resSpell').innerText = rec.spell;
 
-            // Generate "Image" Placeholders for Items
-            const itemContainer = document.getElementById('itemIcons');
-            itemContainer.innerHTML = '';
-            recommendation.items.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'item-icon flex items-center justify-center text-[8px] text-center font-bold p-1 leading-tight text-white uppercase';
-                div.innerText = item;
-                itemContainer.appendChild(div);
+            const items = document.getElementById('itemIcons');
+            items.innerHTML = '';
+            rec.items.forEach(i => {
+                const box = document.createElement('div');
+                box.className = 'item-box flex items-center justify-center text-[7px] text-center font-bold p-1 leading-tight text-white uppercase';
+                box.innerText = i;
+                items.appendChild(box);
             });
 
-            resultArea.classList.remove('hidden');
+            document.getElementById('result').classList.remove('hidden');
         }
     </script>
 </body>
