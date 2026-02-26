@@ -3,40 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB AI PRO HELPER</title>
+    <title>MLBB Social & AI Counter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://unpkg.com/tesseract.js@v4.0.1/dist/tesseract.min.js'></script>
     <style>
         body { background: #020617; color: white; font-family: 'Inter', sans-serif; }
-        .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 24px; }
-        .preview-box { border: 2px dashed #334155; border-radius: 16px; overflow: hidden; min-height: 150px; display: flex; align-items: center; justify-content: center; background: #020617; }
-        .item-icon { width: 55px; height: 55px; background: #1e293b; border: 1px solid #38bdf8; border-radius: 10px; font-size: 8px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; padding: 4px; }
-        .btn-main { background: linear-gradient(90deg, #06b6d4, #3b82f6); transition: all 0.3s; }
-        .btn-main:hover { opacity: 0.9; transform: translateY(-2px); }
+        .glass { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; }
+        .nav-btn { flex: 1; padding: 12px; text-align: center; font-weight: bold; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .nav-active { border-bottom: 2px solid #06b6d4; color: #06b6d4; }
+        .chat-box { height: 300px; overflow-y: auto; background: #020617; border-radius: 12px; padding: 10px; border: 1px solid #1e293b; }
+        .post-card { background: #1e293b; border-radius: 15px; padding: 15px; margin-bottom: 15px; border: 1px solid #334155; }
+        .preview-img { max-height: 200px; border-radius: 10px; object-fit: cover; width: 100%; margin-top: 10px; }
+        input, textarea { background: #020617; border: 1px solid #334155; border-radius: 10px; color: white; padding: 10px; outline: none; width: 100%; }
     </style>
 </head>
-<body class="p-4 flex justify-center">
+<body class="pb-20 max-w-lg mx-auto">
 
-    <div class="w-full max-w-md">
-        <header class="text-center my-6">
-            <h1 class="text-2xl font-black italic tracking-tighter text-cyan-400">MLBB AI COUNTER PRO</h1>
-            <p class="text-[10px] text-slate-500 uppercase tracking-widest">February 2026 Meta Analysis</p>
+    <nav class="sticky top-0 z-50 bg-[#020617]/90 backdrop-blur flex border-b border-slate-800">
+        <div onclick="showTab('ai')" id="btn-ai" class="nav-btn nav-active">AI Helper</div>
+        <div onclick="showTab('feed')" id="btn-feed" class="nav-btn">Feed</div>
+        <div onclick="showTab('chat')" id="btn-chat" class="nav-btn">Chat</div>
+    </nav>
+
+    <div id="tab-ai" class="p-4 space-y-6">
+        <header class="text-center">
+            <h1 class="text-xl font-black text-cyan-400 italic">AI DRAFT ANALYZER</h1>
         </header>
 
-        <div class="card p-6 shadow-2xl mb-6">
-            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">1. Screenshot တင်ပါ</p>
-            <div class="preview-box mb-4" id="dropZone">
-                <img id="imagePreview" class="hidden w-full h-full object-contain">
-                <p id="placeholderText" class="text-slate-500 text-sm">No Image Selected</p>
+        <div class="glass p-5">
+            <div id="dropZone" class="border-2 border-dashed border-slate-700 rounded-xl h-40 flex items-center justify-center mb-4 overflow-hidden">
+                <img id="imagePreview" class="hidden h-full object-contain">
+                <p id="placeholderText" class="text-slate-500 text-xs">No Screenshot Selected</p>
             </div>
-            
             <input type="file" id="fileInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('fileInput').click()" class="w-full py-3 bg-slate-800 rounded-xl text-sm font-bold border border-slate-700 mb-4 hover:bg-slate-700">
-                CHOOSE SCREENSHOT
-            </button>
-
-            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">2. Role ရွေးပါ</p>
-            <select id="userLane" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none mb-6">
+            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-slate-800 py-3 rounded-xl font-bold mb-4">CHOOSE SCREENSHOT</button>
+            
+            <select id="userLane" class="bg-slate-900 mb-4 rounded-xl p-3 border border-slate-700 w-full">
                 <option value="Jungle">Jungle</option>
                 <option value="Gold Lane">Gold Lane</option>
                 <option value="EXP Lane">EXP Lane</option>
@@ -44,59 +46,103 @@
                 <option value="Roam">Roam</option>
             </select>
 
-            <button id="generateBtn" onclick="processAnalysis()" class="btn-main w-full py-4 rounded-2xl font-black text-white shadow-lg active:scale-95 disabled:opacity-50">
-                GENERATE BEST PICK
-            </button>
+            <button onclick="processAnalysis()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl font-black active:scale-95">GENERATE BEST PICK</button>
         </div>
 
-        <div id="loading" class="hidden text-center mb-6">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500 mb-2"></div>
-            <p class="text-xs text-cyan-400 uppercase font-bold tracking-widest">AI Scanning Match Data...</p>
+        <div id="resultArea" class="hidden glass p-5 border-l-4 border-green-500">
+            <p class="text-[10px] text-cyan-400 font-bold uppercase mb-1">Recommended</p>
+            <h2 id="recName" class="text-3xl font-black">--</h2>
+            <div id="recDetails" class="mt-4 text-xs space-y-2">
+                <p id="emblem">Emblem: --</p>
+                <p id="spell">Spell: --</p>
+            </div>
         </div>
+    </div>
 
-        <div id="resultArea" class="hidden animate-in fade-in slide-in-from-bottom-4">
-            <div class="card p-6 border-t-4 border-green-400">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg" id="initial">?</div>
-                    <div>
-                        <span class="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-1 rounded font-bold uppercase">Best Pick</span>
-                        <h2 id="recName" class="text-3xl font-black tracking-tighter">--</h2>
-                    </div>
-                </div>
+    <div id="tab-feed" class="p-4 hidden space-y-4">
+        <div class="glass p-4">
+            <textarea id="postText" placeholder="ဘာတွေတွေးနေလဲ..." rows="2" class="mb-3"></textarea>
+            <input type="file" id="postImage" accept="image/*" class="text-xs mb-3">
+            <button onclick="createPost()" class="w-full bg-cyan-600 py-2 rounded-lg font-bold">Post တင်မယ်</button>
+        </div>
+        <div id="postContainer">
+            </div>
+    </div>
 
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                        <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">Emblem Set</p>
-                        <p id="recEmblem" class="text-xs font-bold text-white">--</p>
-                    </div>
-                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                        <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">Battle Spell</p>
-                        <p id="recSpell" class="text-xs font-bold text-white">--</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                    <p class="text-[9px] text-gray-500 font-bold uppercase mb-3">Counter Build (Patch 2.1)</p>
-                    <div id="itemContainer" class="flex flex-wrap gap-2">
-                        </div>
-                </div>
+    <div id="tab-chat" class="p-4 hidden">
+        <div class="glass p-4 flex flex-col h-full">
+            <div id="chatMessages" class="chat-box mb-4 text-sm space-y-2">
+                <div class="text-gray-500 italic text-[10px]">Public Chat Room သို့ ကြိုဆိုပါတယ်...</div>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" placeholder="စာရိုက်ပါ...">
+                <button onclick="sendMessage()" class="bg-blue-600 px-4 rounded-xl font-bold">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const imgPrev = document.getElementById('imagePreview');
-        const placeholder = document.getElementById('placeholderText');
+        // NAVIGATION LOGIC
+        function showTab(tabName) {
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('nav-active'));
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.getElementById('btn-' + tabName).classList.add('nav-active');
+        }
 
+        // POST LOGIC
+        function createPost() {
+            const text = document.getElementById('postText').value;
+            const imgInput = document.getElementById('postImage');
+            if(!text && !imgInput.files[0]) return;
+
+            const container = document.getElementById('postContainer');
+            const card = document.createElement('div');
+            card.className = 'post-card animate-in fade-in';
+            
+            let imgHtml = "";
+            if(imgInput.files[0]) {
+                const url = URL.createObjectURL(imgInput.files[0]);
+                imgHtml = `<img src="${url}" class="preview-img">`;
+            }
+
+            card.innerHTML = `
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-[10px] font-bold">P</div>
+                    <span class="text-xs font-bold text-cyan-400">Public User</span>
+                </div>
+                <p class="text-sm">${text}</p>
+                ${imgHtml}
+                <div class="mt-3 text-[10px] text-gray-500">Just now • 👍 0 ❤️ 0</div>
+            `;
+            container.prepend(card);
+            document.getElementById('postText').value = "";
+            imgInput.value = "";
+        }
+
+        // CHAT LOGIC
+        function sendMessage() {
+            const msg = document.getElementById('chatInput').value;
+            if(!msg) return;
+            const box = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = "bg-slate-800 p-2 rounded-lg max-w-[80%] ml-auto";
+            div.innerHTML = `<span class="text-[10px] block text-cyan-400 font-bold">You</span><p>${msg}</p>`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+            document.getElementById('chatInput').value = "";
+        }
+
+        // AI LOGIC
+        const fileInput = document.getElementById('fileInput');
         fileInput.onchange = e => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = f => {
-                    imgPrev.src = f.target.result;
-                    imgPrev.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
+                    document.getElementById('imagePreview').src = f.target.result;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('placeholderText').classList.add('hidden');
                 }
                 reader.readAsDataURL(file);
             }
@@ -104,44 +150,18 @@
 
         async function processAnalysis() {
             const file = fileInput.files[0];
-            if (!file) return alert("Please upload a screenshot first!");
-
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('resultArea').classList.add('hidden');
-
-            // Scan using Tesseract
+            if (!file) return alert("Screenshot အရင်တင်ပါ!");
+            
             const { data: { text } } = await Tesseract.recognize(file, 'eng');
             const foundText = text.toLowerCase();
             const lane = document.getElementById('userLane').value;
 
-            // Simple Analysis Logic
-            let pick = { name: "Martis", emblem: "Assassin (Season Master)", spell: "Retri", items: ["Sky Piercer", "Hunter Strike", "DHS"] };
+            let pick = { name: "Martis", emblem: "Assassin", spell: "Retri" };
+            if(foundText.includes("sora")) pick = { name: "Phoveus", emblem: "Fighter", spell: "Vengeance" };
 
-            if(foundText.includes("sora") || foundText.includes("fanny")) {
-                if(lane === "EXP Lane") pick = { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: ["Clock of Destiny", "Oracle", "Radiant Armor"] };
-                if(lane === "Jungle") pick = { name: "Hayabusa", emblem: "Assassin", spell: "Retri", items: ["Sky Piercer", "Malefic Roar", "Blade of Heptaseas"] };
-            } else if(lane === "Gold Lane") {
-                pick = { name: "Ixia", emblem: "Marksman (Quantum Charge)", spell: "Flicker", items: ["Corrosion Scythe", "Golden Staff", "Demon Hunter"] };
-            } else if(lane === "Roam") {
-                pick = { name: "Tigreal", emblem: "Tank (Tenacity)", spell: "Flicker", items: ["Tough Boots", "Dominance Ice", "Antique Cuirass"] };
-            }
-
-            // Display Results
             document.getElementById('recName').innerText = pick.name;
-            document.getElementById('initial').innerText = pick.name.charAt(0);
-            document.getElementById('recEmblem').innerText = pick.emblem;
-            document.getElementById('recSpell').innerText = pick.spell;
-
-            const items = document.getElementById('itemContainer');
-            items.innerHTML = '';
-            pick.items.forEach(i => {
-                const div = document.createElement('div');
-                div.className = 'item-icon';
-                div.innerText = i;
-                items.appendChild(div);
-            });
-
-            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('emblem').innerText = "Emblem: " + pick.emblem;
+            document.getElementById('spell').innerText = "Spell: " + pick.spell;
             document.getElementById('resultArea').classList.remove('hidden');
         }
     </script>
