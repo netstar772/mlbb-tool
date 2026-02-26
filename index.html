@@ -3,60 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB Counter-Pick Tool 2026</title>
+    <title>MLBB Counter Tool 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .hero-card { background: linear-gradient(145deg, #1a1f2e, #11151f); border: 1px solid #2d3748; }
-        .accent { color: #4fd1c5; }
-        select { background: #1a202c; border: 1px solid #4a5568; color: white; border-radius: 8px; padding: 12px; width: 100%; margin-bottom: 15px; }
-        .btn-update { background: linear-gradient(to right, #38bdf8, #2563eb); }
+        body { background-color: #0f172a; color: white; font-family: sans-serif; }
+        .main-card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 1.5rem; }
+        select { background: #0f172a; border: 1px solid #475569; color: white; width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .btn-go { background: linear-gradient(to right, #06b6d4, #3b82f6); width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center">
-    <div class="w-full max-w-md">
-        <header class="text-center my-6">
-            <h1 class="text-2xl font-black italic text-white uppercase tracking-widest">MLBB <span class="accent">COUNTER</span> PRO</h1>
-            <p class="text-xs text-gray-500 uppercase">Season 39 - February 2026 Meta</p>
-        </header>
+<body class="p-6">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-6 text-cyan-400">MLBB COUNTER PICK 2026</h1>
 
-        <div class="hero-card p-6 rounded-2xl shadow-xl border-t-4 border-cyan-500">
-            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Enemy Picked Hero</label>
+        <div class="main-card shadow-2xl">
+            <label class="block text-sm mb-2">Enemy Picked Hero:</label>
             <select id="enemyHero">
-                <option value="">-- Select Enemy --</option>
-                <optgroup label="S-Tier Meta">
-                    <option value="Sora">Sora (Cloud Warrior)</option>
-                    <option value="Gloo">Gloo (Tank Meta)</option>
-                    <option value="Yi Sun-shin">Yi Sun-shin (Revamped)</option>
-                    <option value="Helcurt">Helcurt (Silence)</option>
-                    <option value="Ixia">Ixia (Gold Lane Dominant)</option>
-                </optgroup>
-                <optgroup label="Others">
-                    <option value="Hayabusa">Hayabusa</option>
-                    <option value="Angela">Angela</option>
-                    <option value="Fredrinn">Fredrinn</option>
-                    <option value="Kalea">Kalea</option>
-                </optgroup>
+                <option value="Sora">Sora (OP Fighter)</option>
+                <option value="Gloo">Gloo (Tank Meta)</option>
+                <option value="Ixia">Ixia (Gold Lane)</option>
+                <option value="Zetian">Zetian (New Mage)</option>
+                <option value="Hayabusa">Hayabusa (Revamped)</option>
+                <option value="Helcurt">Helcurt (Assasin)</option>
+                <option value="Kalea">Kalea (Support)</option>
             </select>
 
-            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Your Lane / Role</label>
-            <select id="userLane">
+            <label class="block text-sm mb-2">Your Lane:</label>
+            <select id="myLane">
                 <option value="Jungle">Jungle</option>
-                <option value="Gold Lane">Gold Lane</option>
                 <option value="EXP Lane">EXP Lane</option>
+                <option value="Gold Lane">Gold Lane</option>
                 <option value="Mid Lane">Mid Lane</option>
-                <option value="Roam">Roam (Tank/Support)</option>
+                <option value="Roam">Roam</option>
             </select>
 
-            <button onclick="findCounter()" class="btn-update w-full py-4 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-transform">
-                GET COUNTER SUGGESTION
-            </button>
+            <button onclick="startCounter()" class="btn-go uppercase tracking-wider">Get Counter Suggestion</button>
         </div>
 
-        <div id="result" class="hidden mt-6 animate-pulse">
-            <div class="hero-card p-5 rounded-2xl border-l-4 border-green-400">
-                <p class="text-xs text-gray-400 font-bold uppercase">Recommended Pick:</p>
-                <h2 id="recHero" class="text-3xl font-black text-white mb-4">--</h2>
-                
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+        <div id="resultBox" class="hidden mt-6 p-5 border-l-4 border-cyan-400 bg-slate-800 rounded-lg">
+            <h2 class="text-gray-400 text-xs font-bold uppercase">Use this Hero:</h2>
+            <div id="recHeroName" class="text-3xl font-black text-white my-2">--</div>
+            
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <div class="bg-slate-900 p-2 rounded">
+                    <p class="text-[10px] text-cyan-400">EMBLEM</p>
+                    <p id="recEmblem" class="text-sm font-bold">--</p>
+                </div>
+                <div class="bg-slate-900 p-2 rounded">
+                    <p class="text-[10px] text-cyan-400">SPELL</p>
+                    <p id="recSpell" class="text-sm font-bold">--</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-3 rounded mt-2">
+                <p class="text-[10px] text-cyan-400 font-bold mb-1 uppercase">Recommended Items:</p>
+                <p id="recItems" class="text-xs italic text-gray-300">--</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const database = {
+            "Sora": {
+                "EXP Lane": { name: "Phoveus", emblem: "Fighter (Brave Smite)", spell: "Vengeance", items: "Tough Boots, Clock of Destiny, Oracle" },
+                "Jungle": { name: "Hayabusa", emblem: "Assassin (Lethal Ignition)", spell: "Retribution", items: "Sky Piercer, Hunter Strike, Malefic Roar" },
+                "Roam": { name: "Minsitthar", emblem: "Tank (Tenacity)", spell: "Flicker", items: "Dominance Ice, Antique Cuirass" }
+            },
+            "Zetian": {
+                "Mid Lane": { name: "Kagura", emblem: "Mage (Lethal Ignition)", spell: "Execute", items: "Arcane Boots, Lightning Truncheon, Holy Crystal" },
+                "Roam": { name: "Diggie", emblem: "Support (Pull Yourself Together)", spell: "Flicker", items: "Flask of Oasis, Fleeting Time" }
+            },
+            "Ixia": {
+                "Gold Lane": { name: "Claude", emblem: "Marksman (Quantum Charge)", spell: "Vengeance", items: "Corrosion Scythe, DHS, Golden Staff" }
+            },
+            "default": {
+                "Jungle": { name: "Fredrinn", emblem: "Tank (Shockwave)", spell: "Retri", items: "Cursed Helmet, Guardian Helmet" },
+                "Gold Lane": { name: "Karrie", emblem: "Marksman (Weakness Finder)", spell: "Flicker", items: "Corrosion Scythe, Golden Staff" },
+                "EXP Lane": { name: "Terizla", emblem: "Fighter (Festival of Blood)", spell: "Flicker", items: "Bloodlust Axe, Dominance Ice" },
+                "Mid Lane": { name: "Vexana", emblem: "Mage (Lethal Ignition)", spell: "Flicker", items: "Enchanted Talisman, Glowing Wand" },
+                "Roam": { name: "Tigreal", emblem: "Tank (Concussive Blast)", spell: "Flicker", items: "Dominance Ice, Athena Shield" }
+            }
+        };
+
+        function startCounter() {
+            const enemy = document.getElementById('enemyHero').value;
+            const lane = document.getElementById('myLane').value;
+            const display = document.getElementById('resultBox');
+
+            let pick = (database[enemy] && database[enemy][lane]) ? database[enemy][lane] : database["default"][lane];
+
+            document.getElementById('recHeroName').innerText = pick.name;
+            document.getElementById('recEmblem').innerText = pick.emblem;
+            document.getElementById('recSpell').innerText = pick.spell;
+            document.getElementById('recItems').innerText = pick.items;
+
+            display.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
