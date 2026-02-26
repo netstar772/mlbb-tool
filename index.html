@@ -1,2 +1,62 @@
-# mlbb-tool
-To help which hero should we pick in my lane in that match 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLBB Counter-Pick Tool 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hero-card { background: linear-gradient(145deg, #1a1f2e, #11151f); border: 1px solid #2d3748; }
+        .accent { color: #4fd1c5; }
+        select { background: #1a202c; border: 1px solid #4a5568; color: white; border-radius: 8px; padding: 12px; width: 100%; margin-bottom: 15px; }
+        .btn-update { background: linear-gradient(to right, #38bdf8, #2563eb); }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center">
+    <div class="w-full max-w-md">
+        <header class="text-center my-6">
+            <h1 class="text-2xl font-black italic text-white uppercase tracking-widest">MLBB <span class="accent">COUNTER</span> PRO</h1>
+            <p class="text-xs text-gray-500 uppercase">Season 39 - February 2026 Meta</p>
+        </header>
+
+        <div class="hero-card p-6 rounded-2xl shadow-xl border-t-4 border-cyan-500">
+            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Enemy Picked Hero</label>
+            <select id="enemyHero">
+                <option value="">-- Select Enemy --</option>
+                <optgroup label="S-Tier Meta">
+                    <option value="Sora">Sora (Cloud Warrior)</option>
+                    <option value="Gloo">Gloo (Tank Meta)</option>
+                    <option value="Yi Sun-shin">Yi Sun-shin (Revamped)</option>
+                    <option value="Helcurt">Helcurt (Silence)</option>
+                    <option value="Ixia">Ixia (Gold Lane Dominant)</option>
+                </optgroup>
+                <optgroup label="Others">
+                    <option value="Hayabusa">Hayabusa</option>
+                    <option value="Angela">Angela</option>
+                    <option value="Fredrinn">Fredrinn</option>
+                    <option value="Kalea">Kalea</option>
+                </optgroup>
+            </select>
+
+            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Your Lane / Role</label>
+            <select id="userLane">
+                <option value="Jungle">Jungle</option>
+                <option value="Gold Lane">Gold Lane</option>
+                <option value="EXP Lane">EXP Lane</option>
+                <option value="Mid Lane">Mid Lane</option>
+                <option value="Roam">Roam (Tank/Support)</option>
+            </select>
+
+            <button onclick="findCounter()" class="btn-update w-full py-4 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-transform">
+                GET COUNTER SUGGESTION
+            </button>
+        </div>
+
+        <div id="result" class="hidden mt-6 animate-pulse">
+            <div class="hero-card p-5 rounded-2xl border-l-4 border-green-400">
+                <p class="text-xs text-gray-400 font-bold uppercase">Recommended Pick:</p>
+                <h2 id="recHero" class="text-3xl font-black text-white mb-4">--</h2>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-gray-800/50 p-3 rounded-lg text-center">
