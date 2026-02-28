@@ -101,14 +101,14 @@
                 total: total,
                 payment: paymentType ? "Mobile Banking" : "COD",
                 status: "Pending",
-                customer: auth.currentUser?.phoneNumber || "Guest",
+                customer: auth.currentUser?.09429991957 || "Guest",
                 time: serverTimestamp()
             };
 
             await addDoc(collection(db, "orders"), orderData);
             
             if(paymentType) {
-                alert(`စုစုပေါင်း ${total} ကျပ်ကို KPay: 09xxxxxxx သို့ လွှဲပေးပါ။ Order တင်ပြီးပါပြီ!`);
+                alert(`စုစုပေါင်း ${total} ကျပ်ကို KPay: 09429991957 သို့ လွှဲပေးပါ။ Order တင်ပြီးပါပြီ!`);
             } else {
                 alert("Order တင်ခြင်း အောင်မြင်ပါသည်။");
             }
