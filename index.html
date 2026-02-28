@@ -3,13 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB Social Pro: Profiles & Walls</title>
+    <title>MLBB Connect: Profile & Wall</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            /* သင်ပေးထားတဲ့ ပုံကို Background အဖြစ် သုံးထားပါတယ် */
+            background-image: url('https://raw.githubusercontent.com/your-username/your-repo/main/photo_2026-02-13_21-59-46.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-morphism {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc, updateDoc, increment, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCgB37v5kwWeYBNmkGIojTqgl_iMe4Yxfc",
             authDomain: "mlbb-hero-pick-helper.firebaseapp.com",
@@ -22,166 +35,170 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let currentUser = JSON.parse(localStorage.getItem('mlbb_pro_v2')) || null;
-        let viewMode = 'feed'; // feed, profile, wall
+        let currentUser = JSON.parse(localStorage.getItem('mlbb_pro_user')) || null;
 
         window.onload = () => {
             if(!currentUser) document.getElementById('loginModal').classList.remove('hidden');
             else {
-                syncUserToDB();
-                showTab('feed');
+                syncUser();
+                showSection('feed');
             }
         };
 
-        async function syncUserToDB() {
+        async function syncUser() {
             await setDoc(doc(db, "users", currentUser.id), currentUser, { merge: true });
         }
 
         window.joinApp = () => {
             const name = document.getElementById('nickName').value;
             if(!name) return;
-            currentUser = { id: "u" + Date.now(), name, avatar: document.getElementById('avatar').value, bio: "MLBB Player" };
-            localStorage.setItem('mlbb_pro_v2', JSON.stringify(currentUser));
+            currentUser = { id: "u" + Date.now(), name, avatar: document.getElementById('avatar').value, bio: "MLBB Pro Player" };
+            localStorage.setItem('mlbb_pro_user', JSON.stringify(currentUser));
             location.reload();
         };
 
-        // --- NAVIGATION & TABS ---
-        window.showTab = (tab, targetUserId = null) => {
-            viewMode = tab;
-            document.getElementById('feedSection').classList.add('hidden');
-            document.getElementById('profileSection').classList.add('hidden');
-            document.getElementById('wallSection').classList.add('hidden');
+        // --- NAVIGATION ---
+        window.showSection = (section, targetId = null) => {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(section + 'Section').classList.remove('hidden');
 
-            if(tab === 'feed') {
-                document.getElementById('feedSection').classList.remove('hidden');
-                loadPosts();
-            } else if(tab === 'profile') {
-                document.getElementById('profileSection').classList.remove('hidden');
-                loadMyProfile();
-            } else if(tab === 'wall') {
-                document.getElementById('wallSection').classList.remove('hidden');
-                loadUserWall(targetUserId);
-            }
+            if(section === 'feed') loadFeed();
+            if(section === 'chat') loadPublicChat();
+            if(section === 'wall') loadUserWall(targetId);
         };
 
-        // --- POST SYSTEM ---
+        // --- FEED SYSTEM ---
         window.createPost = async () => {
             const text = document.getElementById('postText').value;
             if(!text) return;
             await addDoc(collection(db, "posts"), {
                 text, authorId: currentUser.id, authorName: currentUser.name, 
-                avatar: currentUser.avatar, likes: 0, time: serverTimestamp()
+                avatar: currentUser.avatar, time: serverTimestamp()
             });
             document.getElementById('postText').value = "";
         };
 
-        function loadPosts(filterUserId = null) {
-            const q = filterUserId 
-                ? query(collection(db, "posts"), where("authorId", "==", filterUserId), orderBy("time", "desc"))
-                : query(collection(db, "posts"), orderBy("time", "desc"));
-            
-            onSnapshot(q, (snap) => {
-                const target = filterUserId ? 'wallPosts' : 'feedArea';
-                const container = document.getElementById(target);
-                container.innerHTML = "";
+        function loadFeed() {
+            onSnapshot(query(collection(db, "posts"), orderBy("time", "desc")), (snap) => {
+                const feed = document.getElementById('feedArea');
+                feed.innerHTML = "";
                 snap.forEach(d => {
                     const p = d.data();
-                    container.innerHTML += `
-                        <div class="bg-slate-900 p-4 rounded-3xl mb-4 border border-slate-800 shadow-xl">
-                            <div class="flex items-center gap-2 mb-3 cursor-pointer" onclick="showTab('wall', '${p.authorId}')">
+                    feed.innerHTML += `
+                        <div class="glass-morphism p-4 rounded-3xl mb-4">
+                            <div class="flex items-center gap-2 mb-2 cursor-pointer" onclick="showSection('wall', '${p.authorId}')">
                                 <span class="text-2xl">${p.avatar}</span>
                                 <span class="font-bold text-cyan-400 text-sm">${p.authorName}</span>
                             </div>
-                            <p class="text-sm text-slate-300 mb-3">${p.text}</p>
-                            <button onclick="addLike('${d.id}')" class="text-[10px] bg-slate-800 px-3 py-1 rounded-full">❤️ ${p.likes || 0}</button>
+                            <p class="text-sm text-slate-200">${p.text}</p>
                         </div>`;
                 });
             });
         }
 
-        window.addLike = async (id) => {
-            await updateDoc(doc(db, "posts", id), { likes: increment(1) });
+        // --- PUBLIC CHAT SYSTEM ---
+        window.sendChat = async () => {
+            const msg = document.getElementById('chatInput').value;
+            if(!msg) return;
+            await addDoc(collection(db, "public_chats"), {
+                msg, sender: currentUser.name, senderId: currentUser.id, time: serverTimestamp()
+            });
+            document.getElementById('chatInput').value = "";
         };
 
-        // --- PROFILE & WALL LOGIC ---
-        function loadMyProfile() {
-            document.getElementById('myAvatar').innerText = currentUser.avatar;
-            document.getElementById('myName').innerText = currentUser.name;
-            document.getElementById('myBio').innerText = currentUser.bio;
+        function loadPublicChat() {
+            onSnapshot(query(collection(db, "public_chats"), orderBy("time", "asc")), (snap) => {
+                const box = document.getElementById('chatBox');
+                box.innerHTML = "";
+                snap.forEach(d => {
+                    const c = d.data();
+                    const isMe = c.senderId === currentUser.id;
+                    box.innerHTML += `
+                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-2">
+                            <div class="${isMe ? 'bg-cyan-600' : 'bg-slate-700'} p-2 px-4 rounded-2xl text-xs max-w-[80%]">
+                                <p class="font-bold opacity-50 text-[10px]">${c.sender}</p>
+                                <p>${c.msg}</p>
+                            </div>
+                        </div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
         }
 
+        // --- USER WALL SYSTEM ---
         async function loadUserWall(userId) {
             onSnapshot(doc(db, "users", userId), (d) => {
                 const u = d.data();
-                document.getElementById('wallAvatar').innerText = u.avatar;
-                document.getElementById('wallName').innerText = u.name;
-                document.getElementById('wallBio').innerText = u.bio;
+                document.getElementById('wallHeader').innerHTML = `
+                    <div class="text-center p-6">
+                        <div class="text-6xl mb-2">${u.avatar}</div>
+                        <h2 class="text-xl font-bold">${u.name}</h2>
+                        <p class="text-xs text-slate-400">${u.bio}</p>
+                    </div>`;
             });
-            loadPosts(userId);
-        }
 
+            onSnapshot(query(collection(db, "posts"), where("authorId", "==", userId), orderBy("time", "desc")), (snap) => {
+                const wallPosts = document.getElementById('wallPosts');
+                wallPosts.innerHTML = "";
+                snap.forEach(d => {
+                    const p = d.data();
+                    wallPosts.innerHTML += `
+                        <div class="glass-morphism p-4 rounded-2xl mb-3 text-sm">
+                            ${p.text}
+                        </div>`;
+                });
+            });
+        }
     </script>
 </head>
-<body class="bg-[#020617] text-white max-w-md mx-auto h-screen flex flex-col font-sans">
+<body class="text-white max-w-md mx-auto h-screen flex flex-col font-sans">
 
     <div id="loginModal" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6 hidden">
-        <div class="bg-slate-900 p-8 rounded-[2.5rem] w-full border border-slate-800 text-center shadow-2xl">
-            <h2 class="text-xl font-black mb-6 text-cyan-400">CREATE PROFILE</h2>
-            <select id="avatar" class="w-full bg-slate-800 p-4 rounded-2xl mb-4 text-3xl outline-none border border-slate-700">
-                <option value="🥷">🥷</option><option value="🏹">🏹</option><option value="🧙‍♂️">🧙‍♂️</option><option value="🛡️">🛡️</option>
+        <div class="glass-morphism p-8 rounded-[2.5rem] w-full text-center">
+            <h2 class="text-xl font-black mb-6 text-cyan-400">JOIN MLBB HUB</h2>
+            <select id="avatar" class="w-full bg-slate-800 p-4 rounded-2xl mb-4 text-3xl outline-none">
+                <option value="🥷">🥷</option><option value="🏹">🏹</option><option value="🧙‍♂️">🧙‍♂️</option>
             </select>
-            <input type="text" id="nickName" placeholder="နာမည်..." class="w-full bg-slate-800 p-4 rounded-2xl mb-6 outline-none border border-slate-700">
-            <button onclick="joinApp()" class="w-full bg-cyan-500 text-slate-950 py-4 rounded-2xl font-black">START JOURNEY</button>
+            <input type="text" id="nickName" placeholder="သင့်နာမည်..." class="w-full bg-slate-800 p-4 rounded-2xl mb-6 outline-none">
+            <button onclick="joinApp()" class="w-full bg-cyan-500 text-slate-950 py-4 rounded-2xl font-black">START</button>
         </div>
     </div>
 
-    <header class="p-5 flex justify-between items-center bg-slate-950/80 backdrop-blur sticky top-0 z-50 border-b border-slate-900">
-        <h1 class="text-lg font-black italic text-cyan-500" onclick="showTab('feed')">MLBB WORLD</h1>
-        <div class="text-[10px] font-bold bg-slate-800 px-3 py-1 rounded-full cursor-pointer" onclick="showTab('profile')">My Profile</div>
+    <header class="p-5 glass-morphism sticky top-0 z-50 flex justify-between items-center border-b border-slate-700">
+        <h1 class="font-black italic text-cyan-400 tracking-tighter cursor-pointer" onclick="showSection('feed')">MLBB SOCIAL</h1>
+        <div class="text-[10px] bg-slate-800 px-3 py-1 rounded-full border border-slate-700" onclick="showSection('wall', currentUser.id)">My Wall</div>
     </header>
 
-    <main class="flex-1 overflow-y-auto">
+    <main class="flex-1 overflow-y-auto pb-20">
         <section id="feedSection" class="p-5 hidden">
-            <div class="bg-slate-900 p-4 rounded-3xl mb-6 border border-slate-800">
+            <div class="glass-morphism p-4 rounded-3xl mb-6">
                 <textarea id="postText" placeholder="ဘာတွေပြောချင်လဲ..." class="w-full bg-transparent outline-none text-sm h-16 resize-none mb-2"></textarea>
                 <button onclick="createPost()" class="w-full bg-cyan-600 py-3 rounded-xl text-xs font-black shadow-lg">POST</button>
             </div>
             <div id="feedArea"></div>
         </section>
 
-        <section id="profileSection" class="p-8 text-center hidden">
-            <div id="myAvatar" class="text-7xl mb-4">👤</div>
-            <h2 id="myName" class="text-2xl font-black text-cyan-400 mb-2">User</h2>
-            <p id="myBio" class="text-sm text-slate-500 mb-6">Bio here...</p>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                    <p class="text-[10px] text-slate-500 font-bold">FOLLOWERS</p>
-                    <p class="text-xl font-black">0</p>
-                </div>
-                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                    <p class="text-[10px] text-slate-500 font-bold">FOLLOWING</p>
-                    <p class="text-xl font-black">0</p>
-                </div>
+        <section id="chatSection" class="p-5 hidden h-full flex flex-col">
+            <div id="chatBox" class="flex-1 overflow-y-auto mb-4 space-y-2 p-2 glass-morphism rounded-3xl h-[60vh]"></div>
+            <div class="flex gap-2 glass-morphism p-2 rounded-2xl">
+                <input type="text" id="chatInput" placeholder="စာရိုက်ပါ..." class="flex-1 bg-transparent p-2 outline-none text-xs">
+                <button onclick="sendChat()" class="bg-cyan-600 px-6 py-2 rounded-xl font-bold text-xs">SEND</button>
             </div>
         </section>
 
         <section id="wallSection" class="hidden">
-            <div class="p-8 text-center bg-slate-900/50 border-b border-slate-900">
-                <div id="wallAvatar" class="text-6xl mb-3">👤</div>
-                <h2 id="wallName" class="text-xl font-black text-white">Name</h2>
-                <p id="wallBio" class="text-xs text-slate-500 mb-4 italic">Bio...</p>
-                <button class="bg-cyan-500 text-slate-950 px-6 py-2 rounded-full font-black text-xs">Message</button>
-            </div>
+            <div id="wallHeader" class="glass-morphism mb-4"></div>
             <div class="p-5">
-                <h3 class="text-[10px] font-black text-slate-500 mb-4 uppercase tracking-widest">User's Posts</h3>
+                <h3 class="text-[10px] font-bold text-cyan-400 mb-4 uppercase">Posts by User</h3>
                 <div id="wallPosts"></div>
             </div>
         </section>
     </main>
 
-    <nav class="bg-slate-950/90 border-t border-slate-900 p-4 flex justify-around text-[10px] font-black sticky bottom-0 z-50">
-        <button onclick="showTab('feed')" class="text-cyan-500">🏠 HOME</button>
-        <button onclick="showTab('profile')" class="text-slate-500">👤 PROFILE</button>
+    <nav class="fixed bottom-0 left-0 right-0 glass-morphism p-4 flex justify-around text-[10px] font-black z-50 max-w-md mx-auto">
+        <button onclick="showSection('feed')" class="flex flex-col items-center">🏠<span>FEED</span></button>
+        <button onclick="showSection('chat')" class="flex flex-col items-center">💬<span>CHAT</span></button>
+        <button onclick="showSection('wall', currentUser.id)" class="flex flex-col items-center">👤<span>WALL</span></button>
     </nav>
 
 </body>
