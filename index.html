@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB Mega Store</title>
+    <title> Zwel Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -99,7 +99,7 @@
             const orderData = {
                 items: cart,
                 total: total,
-                payment: paymentType ? "Mobile Banking" : "COD",
+                payment: paymentType ? "Mobile Banking" : "COD" : "KBZ pay",
                 status: "Pending",
                 customer: auth.currentUser?.09429991957 || "Guest",
                 time: serverTimestamp()
