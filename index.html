@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Zwel Store</title>
+    <title>MLBB AI Strategist & Social</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
+        .ai-glow { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
+    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Firebase Config
+        // Your Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCgB37v5kwWeYBNmkGIojTqgl_iMe4Yxfc",
             authDomain: "mlbb-hero-pick-helper.firebaseapp.com",
@@ -22,158 +26,183 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
 
-        let cart = [];
-        let isStoreManager = false; // Admin ဟုတ်မဟုတ် စစ်ရန်
+        let user = JSON.parse(localStorage.getItem('mlbb_ultimate_user')) || null;
 
         window.onload = () => {
-            loadProducts();
-            checkAdminStatus();
+            if(!user) document.getElementById('loginModal').classList.remove('hidden');
+            else { setupApp(); }
         };
 
-        // --- 1. USER AUTH (PHONE LOGIN) ---
-        window.setupRecaptcha = () => {
-            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', { 'size': 'invisible' });
+        // --- 1. CUSTOM LOGIN ---
+        window.joinApp = async () => {
+            const name = document.getElementById('nickName').value;
+            const bio = document.getElementById('userBio').value;
+            const avatar = document.getElementById('avatarImg').value || "🦊";
+            if(!name) return;
+            user = { id: "u"+Date.now(), name, bio, avatar, wallPic: "" };
+            localStorage.setItem('mlbb_ultimate_user', JSON.stringify(user));
+            await setDoc(doc(db, "users", user.id), user);
+            location.reload();
         };
 
-        window.sendOTP = async () => {
-            const phone = document.getElementById('phoneInput').value;
-            setupRecaptcha();
-            const appVerifier = window.recaptchaVerifier;
-            const confirmationResult = await signInWithPhoneNumber(auth, phone, appVerifier);
-            window.confirmationResult = confirmationResult;
-            document.getElementById('otpArea').classList.remove('hidden');
+        function setupApp() {
+            document.getElementById('navUser').innerText = user.name;
+            loadChat();
+            loadFeed();
+        }
+
+        // --- 2. AI PICK SUGGESTION (Simulated OCR/AI) ---
+        window.analyzeDraft = () => {
+            const loader = document.getElementById('aiLoader');
+            const result = document.getElementById('aiResult');
+            loader.classList.remove('hidden');
+            result.classList.add('hidden');
+
+            // AI Suggestion Logic (5 Seconds Delay)
+            setTimeout(() => {
+                loader.classList.add('hidden');
+                result.classList.remove('hidden');
+                
+                // Example Logic based on current Meta
+                result.innerHTML = `
+                    <div class="p-4 glass rounded-2xl ai-glow border-cyan-500">
+                        <h3 class="text-cyan-400 font-bold mb-2">AI STRATEGY FOUND!</h3>
+                        <p class="text-xs">Based on current Ban/Pick & Meta Update:</p>
+                        <div class="mt-3 grid grid-cols-1 gap-2 text-[11px]">
+                            <div class="bg-slate-800 p-2 rounded-lg">🛡️ <b>Roam:</b> Tigreal (Anti-Dash Build)</div>
+                            <div class="bg-slate-800 p-2 rounded-lg">⚔️ <b>Exp:</b> Terizla (Tank Emblem - Tenacity)</div>
+                            <div class="bg-slate-800 p-2 rounded-lg">🔨 <b>Items:</b> Dominance Ice, Radiant Armor</div>
+                        </div>
+                    </div>`;
+            }, 5000);
         };
 
-        // --- 2. ADMIN PANEL (PRODUCT MGMT) ---
-        window.toggleAdmin = () => {
-            const pass = prompt("Admin Password ရိုက်ပါ:");
-            if(pass === "admin123") {
-                isStoreManager = true;
-                document.getElementById('adminPanel').classList.remove('hidden');
-            }
+        // --- 3. ADVANCED CHAT (Enter Key & Stickers) ---
+        window.sendChat = async (sticker = null) => {
+            const input = document.getElementById('chatInput');
+            const msg = sticker || input.value;
+            if(!msg) return;
+
+            await addDoc(collection(db, "global_chat"), {
+                text: msg, sender: user.name, senderId: user.id, 
+                avatar: user.avatar, type: sticker ? "sticker" : "text",
+                time: serverTimestamp()
+            });
+            input.value = "";
         };
 
-        window.addProduct = async () => {
-            const name = document.getElementById('pName').value;
-            const price = Number(document.getElementById('pPrice').value);
-            const img = document.getElementById('pImg').value;
-            const desc = document.getElementById('pDesc').value;
+        // Enter Key Listener
+        window.handleChatKey = (e) => { if(e.key === 'Enter') sendChat(); };
 
-            await addDoc(collection(db, "products"), { name, price, image: img, desc, time: serverTimestamp() });
-            alert("ပစ္စည်းအသစ် တင်ပြီးပါပြီ!");
-        };
-
-        // --- 3. PRODUCT LIST & CART ---
-        function loadProducts() {
-            onSnapshot(query(collection(db, "products"), orderBy("time", "desc")), (snap) => {
-                const list = document.getElementById('productList');
-                list.innerHTML = "";
+        function loadChat() {
+            onSnapshot(query(collection(db, "global_chat"), orderBy("time", "asc")), (snap) => {
+                const box = document.getElementById('chatBox');
+                box.innerHTML = "";
                 snap.forEach(d => {
-                    const p = d.data();
-                    list.innerHTML += `
-                        <div class="bg-white p-3 rounded-2xl shadow-md border border-slate-100">
-                            <img src="${p.image}" class="w-full h-32 object-cover rounded-xl mb-2">
-                            <h3 class="font-bold text-sm truncate">${p.name}</h3>
-                            <p class="text-orange-500 font-black text-xs">${p.price} MMK</p>
-                            <button onclick="addToCart('${p.name}', ${p.price})" class="w-full bg-orange-500 text-white py-2 rounded-lg mt-2 text-[10px] font-bold">ADD TO CART</button>
-                            ${isStoreManager ? `<button onclick="deleteProduct('${d.id}')" class="text-red-500 text-[9px] mt-1 underline">Delete</button>` : ''}
+                    const m = d.data();
+                    const isMe = m.senderId === user.id;
+                    box.innerHTML += `
+                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-3">
+                            <div class="${isMe ? 'bg-cyan-600' : 'bg-slate-800'} p-3 rounded-2xl max-w-[80%] shadow-lg">
+                                <p class="text-[9px] font-bold opacity-60 mb-1">${m.sender}</p>
+                                ${m.type === 'sticker' ? `<span class="text-4xl">${m.text}</span>` : `<p class="text-xs">${m.text}</p>`}
+                            </div>
                         </div>`;
                 });
+                box.scrollTop = box.scrollHeight;
             });
         }
 
-        window.addToCart = (n, p) => {
-            cart.push({name: n, price: p});
-            document.getElementById('cartCount').innerText = cart.length;
-        };
-
-        // --- 4. ORDER & PAYMENT (KPay/Wave) ---
-        window.checkout = async () => {
-            if(cart.length === 0) return alert("ဈေးခြင်းတောင်းထဲ ပစ္စည်းထည့်ပါ");
+        // --- 4. PROFILE WALL ---
+        window.viewProfile = (userId) => {
+            document.getElementById('appMain').classList.add('hidden');
+            document.getElementById('profileWall').classList.remove('hidden');
             
-            const total = cart.reduce((s, i) => s + i.price, 0);
-            const paymentType = confirm("KPay/Wave ဖြင့် ပေးချေမှာလား? (OK = Yes, Cancel = Cash on Delivery)");
-            
-            const orderData = {
-                items: cart,
-                total: total,
-                payment: paymentType ? "Mobile Banking" : "COD" : "KBZ pay",
-                status: "Pending",
-                customer: auth.currentUser?.09429991957 || "Guest",
-                time: serverTimestamp()
-            };
-
-            await addDoc(collection(db, "orders"), orderData);
-            
-            if(paymentType) {
-                alert(`စုစုပေါင်း ${total} ကျပ်ကို KPay: 09429991957 သို့ လွှဲပေးပါ။ Order တင်ပြီးပါပြီ!`);
-            } else {
-                alert("Order တင်ခြင်း အောင်မြင်ပါသည်။");
-            }
-            cart = [];
-            document.getElementById('cartCount').innerText = "0";
-        };
-
-        // --- 5. ORDER CHECKING (ADMIN) ---
-        window.viewOrders = () => {
-            document.getElementById('orderModal').classList.remove('hidden');
-            onSnapshot(query(collection(db, "orders"), orderBy("time", "desc")), (snap) => {
-                const oList = document.getElementById('orderList');
-                oList.innerHTML = "";
-                snap.forEach(d => {
-                    const o = d.data();
-                    oList.innerHTML += `
-                        <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-orange-500 text-[10px]">
-                            <p><b>Phone:</b> ${o.customer}</p>
-                            <p><b>Items:</b> ${o.items.length} ခု</p>
-                            <p><b>Total:</b> ${o.total} MMK (${o.payment})</p>
-                            <button class="bg-green-500 text-white px-2 py-1 rounded mt-1">Confirm Order</button>
-                        </div>`;
-                });
+            onSnapshot(doc(db, "users", userId), (d) => {
+                const u = d.data();
+                document.getElementById('wallContent').innerHTML = `
+                    <div class="text-center p-10 glass rounded-b-[3rem] mb-6">
+                        <div class="text-7xl mb-4">${u.avatar}</div>
+                        <h2 class="text-2xl font-black text-cyan-400">${u.name}</h2>
+                        <p class="text-sm text-slate-400 mt-2 italic">"${u.bio}"</p>
+                    </div>`;
             });
         };
+
+        window.showSection = (id) => {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById('appMain').classList.remove('hidden');
+            document.getElementById('profileWall').classList.add('hidden');
+        };
+
     </script>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body class="max-w-md mx-auto h-screen flex flex-col">
 
-    <header class="bg-white p-4 sticky top-0 z-40 flex justify-between items-center shadow-sm border-b border-slate-200">
-        <h1 class="text-xl font-black text-orange-600 italic">MEGA STORE</h1>
-        <div class="flex gap-4 items-center">
-            <button onclick="toggleAdmin()" class="text-[10px] text-slate-400">Admin</button>
-            <div onclick="checkout()" class="relative cursor-pointer bg-slate-100 p-2 rounded-full">
-                🛒 <span id="cartCount" class="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] px-1.5 rounded-full">0</span>
-            </div>
+    <div id="loginModal" class="fixed inset-0 bg-[#0f172a] z-[100] flex items-center justify-center p-6 hidden">
+        <div class="glass p-8 rounded-[3rem] w-full text-center">
+            <h2 class="text-xl font-black mb-6 text-cyan-400">SET UP YOUR IDENTITY</h2>
+            <input type="text" id="avatarImg" placeholder="Choose Emoji (eg. 🥷)" class="w-full bg-slate-800 p-4 rounded-2xl mb-4 text-center outline-none border border-slate-700">
+            <input type="text" id="nickName" placeholder="Player Name" class="w-full bg-slate-800 p-4 rounded-2xl mb-4 outline-none border border-slate-700 text-sm">
+            <textarea id="userBio" placeholder="Your Bio (eg. Mythical Glory Player)" class="w-full bg-slate-800 p-4 rounded-2xl mb-6 h-20 outline-none text-xs"></textarea>
+            <button onclick="joinApp()" class="w-full bg-cyan-500 text-slate-950 py-4 rounded-2xl font-black shadow-cyan-500/20 shadow-xl">START SYSTEM</button>
+        </div>
+    </div>
+
+    <header class="p-5 flex justify-between items-center glass sticky top-0 z-50 rounded-b-3xl">
+        <h1 class="font-black text-cyan-500 italic">MLBB AI</h1>
+        <div onclick="viewProfile(user.id)" class="text-xs bg-slate-800 px-4 py-2 rounded-full border border-slate-700 cursor-pointer">
+            Hi, <span id="navUser" class="text-cyan-400 font-bold"></span>
         </div>
     </header>
 
-    <main class="p-4 max-w-md mx-auto">
-        <section id="adminPanel" class="hidden bg-white p-5 rounded-3xl mb-6 shadow-xl border-2 border-orange-500">
-            <h2 class="text-sm font-bold mb-4 text-orange-600">Admin: Add Product</h2>
-            <input type="text" id="pName" placeholder="Product Name" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
-            <input type="number" id="pPrice" placeholder="Price (MMK)" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
-            <input type="text" id="pImg" placeholder="Image URL" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
-            <textarea id="pDesc" placeholder="Description" class="w-full bg-slate-100 p-3 rounded-xl mb-3 text-xs outline-none"></textarea>
-            <div class="flex gap-2">
-                <button onclick="addProduct()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold text-xs">Add Product</button>
-                <button onclick="viewOrders()" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold text-xs">Check Orders</button>
+    <main id="appMain" class="flex-1 overflow-y-auto pb-24">
+        <section id="aiSection" class="p-5">
+            <div class="glass p-6 rounded-[2.5rem] text-center border-dashed border-2 border-cyan-500/30">
+                <p class="text-xs text-slate-400 mb-4">Upload Ban/Pick Screenshot</p>
+                <input type="file" id="draftImg" class="hidden">
+                <label for="draftImg" class="bg-slate-800 p-10 block rounded-3xl mb-4 cursor-pointer">📸</label>
+                <button onclick="analyzeDraft()" class="w-full bg-cyan-600 py-4 rounded-2xl font-black text-sm">ANALYZE DRAFT (5s)</button>
+                
+                <div id="aiLoader" class="hidden mt-6 flex flex-col items-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500 mb-2"></div>
+                    <p class="text-[10px] animate-pulse">AI is calculating meta counters...</p>
+                </div>
+                <div id="aiResult" class="mt-6"></div>
             </div>
         </section>
 
-        <h2 class="font-black text-lg mb-4 text-slate-800 tracking-tight">Daily Picks</h2>
-        <div id="productList" class="grid grid-cols-2 gap-3"></div>
+        <section id="chatSection" class="hidden h-full flex flex-col p-5">
+            <div id="chatBox" class="flex-1 overflow-y-auto mb-4 space-y-2 p-2 rounded-3xl h-[60vh]"></div>
+            
+            <div class="flex gap-4 mb-3 overflow-x-auto pb-2">
+                <button onclick="sendChat('🔥')" class="text-2xl glass p-2 rounded-xl">🔥</button>
+                <button onclick="sendChat('GG')" class="text-xs font-bold glass p-2 rounded-xl">GG</button>
+                <button onclick="sendChat('🤡')" class="text-2xl glass p-2 rounded-xl">🤡</button>
+            </div>
+
+            <div class="flex gap-2 glass p-2 rounded-2xl">
+                <input type="text" id="chatInput" onkeypress="handleChatKey(event)" placeholder="Message (Press Enter to Send)" class="flex-1 bg-transparent p-2 outline-none text-xs">
+                <button onclick="sendChat()" class="bg-cyan-600 px-6 py-2 rounded-xl font-bold text-xs">SEND</button>
+            </div>
+        </section>
     </main>
 
-    <div id="orderModal" class="fixed inset-0 bg-black/50 z-[100] hidden p-6 overflow-y-auto">
-        <div class="bg-white p-6 rounded-[2rem] w-full">
-            <div class="flex justify-between mb-4">
-                <h2 class="font-bold">Recent Orders</h2>
-                <button onclick="document.getElementById('orderModal').classList.add('hidden')" class="text-red-500 font-bold">Close</button>
-            </div>
-            <div id="orderList"></div>
+    <section id="profileWall" class="hidden flex-1 overflow-y-auto pb-24">
+        <div id="wallContent"></div>
+        <div class="p-6">
+            <h3 class="text-xs font-bold text-cyan-500 mb-4 px-2">RECENT ACTIVITY</h3>
+            <div class="glass p-6 rounded-3xl text-xs text-slate-400 text-center">No recent posts yet.</div>
         </div>
-    </div>
+    </section>
+
+    <nav class="fixed bottom-6 left-6 right-6 glass p-4 flex justify-around rounded-[2rem] z-50">
+        <button onclick="showSection('aiSection')" class="text-xs font-bold hover:text-cyan-400">🤖 AI PICK</button>
+        <button onclick="showSection('chatSection')" class="text-xs font-bold hover:text-cyan-400">💬 CHAT</button>
+        <button onclick="viewProfile(user.id)" class="text-xs font-bold hover:text-cyan-400">👤 PROFILE</button>
+    </nav>
 
 </body>
 </html>
