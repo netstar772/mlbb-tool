@@ -3,26 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB Connect: Profile & Wall</title>
+    <title>MLBB Mega Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            /* သင်ပေးထားတဲ့ ပုံကို Background အဖြစ် သုံးထားပါတယ် */
-            background-image: url('https://raw.githubusercontent.com/your-username/your-repo/main/photo_2026-02-13_21-59-46.jpg'); 
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        .glass-morphism {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc, updateDoc, increment, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCgB37v5kwWeYBNmkGIojTqgl_iMe4Yxfc",
             authDomain: "mlbb-hero-pick-helper.firebaseapp.com",
@@ -34,172 +22,158 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        let currentUser = JSON.parse(localStorage.getItem('mlbb_pro_user')) || null;
+        let cart = [];
+        let isStoreManager = false; // Admin ဟုတ်မဟုတ် စစ်ရန်
 
         window.onload = () => {
-            if(!currentUser) document.getElementById('loginModal').classList.remove('hidden');
-            else {
-                syncUser();
-                showSection('feed');
+            loadProducts();
+            checkAdminStatus();
+        };
+
+        // --- 1. USER AUTH (PHONE LOGIN) ---
+        window.setupRecaptcha = () => {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', { 'size': 'invisible' });
+        };
+
+        window.sendOTP = async () => {
+            const phone = document.getElementById('phoneInput').value;
+            setupRecaptcha();
+            const appVerifier = window.recaptchaVerifier;
+            const confirmationResult = await signInWithPhoneNumber(auth, phone, appVerifier);
+            window.confirmationResult = confirmationResult;
+            document.getElementById('otpArea').classList.remove('hidden');
+        };
+
+        // --- 2. ADMIN PANEL (PRODUCT MGMT) ---
+        window.toggleAdmin = () => {
+            const pass = prompt("Admin Password ရိုက်ပါ:");
+            if(pass === "admin123") {
+                isStoreManager = true;
+                document.getElementById('adminPanel').classList.remove('hidden');
             }
         };
 
-        async function syncUser() {
-            await setDoc(doc(db, "users", currentUser.id), currentUser, { merge: true });
-        }
+        window.addProduct = async () => {
+            const name = document.getElementById('pName').value;
+            const price = Number(document.getElementById('pPrice').value);
+            const img = document.getElementById('pImg').value;
+            const desc = document.getElementById('pDesc').value;
 
-        window.joinApp = () => {
-            const name = document.getElementById('nickName').value;
-            if(!name) return;
-            currentUser = { id: "u" + Date.now(), name, avatar: document.getElementById('avatar').value, bio: "MLBB Pro Player" };
-            localStorage.setItem('mlbb_pro_user', JSON.stringify(currentUser));
-            location.reload();
+            await addDoc(collection(db, "products"), { name, price, image: img, desc, time: serverTimestamp() });
+            alert("ပစ္စည်းအသစ် တင်ပြီးပါပြီ!");
         };
 
-        // --- NAVIGATION ---
-        window.showSection = (section, targetId = null) => {
-            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(section + 'Section').classList.remove('hidden');
-
-            if(section === 'feed') loadFeed();
-            if(section === 'chat') loadPublicChat();
-            if(section === 'wall') loadUserWall(targetId);
-        };
-
-        // --- FEED SYSTEM ---
-        window.createPost = async () => {
-            const text = document.getElementById('postText').value;
-            if(!text) return;
-            await addDoc(collection(db, "posts"), {
-                text, authorId: currentUser.id, authorName: currentUser.name, 
-                avatar: currentUser.avatar, time: serverTimestamp()
-            });
-            document.getElementById('postText').value = "";
-        };
-
-        function loadFeed() {
-            onSnapshot(query(collection(db, "posts"), orderBy("time", "desc")), (snap) => {
-                const feed = document.getElementById('feedArea');
-                feed.innerHTML = "";
+        // --- 3. PRODUCT LIST & CART ---
+        function loadProducts() {
+            onSnapshot(query(collection(db, "products"), orderBy("time", "desc")), (snap) => {
+                const list = document.getElementById('productList');
+                list.innerHTML = "";
                 snap.forEach(d => {
                     const p = d.data();
-                    feed.innerHTML += `
-                        <div class="glass-morphism p-4 rounded-3xl mb-4">
-                            <div class="flex items-center gap-2 mb-2 cursor-pointer" onclick="showSection('wall', '${p.authorId}')">
-                                <span class="text-2xl">${p.avatar}</span>
-                                <span class="font-bold text-cyan-400 text-sm">${p.authorName}</span>
-                            </div>
-                            <p class="text-sm text-slate-200">${p.text}</p>
+                    list.innerHTML += `
+                        <div class="bg-white p-3 rounded-2xl shadow-md border border-slate-100">
+                            <img src="${p.image}" class="w-full h-32 object-cover rounded-xl mb-2">
+                            <h3 class="font-bold text-sm truncate">${p.name}</h3>
+                            <p class="text-orange-500 font-black text-xs">${p.price} MMK</p>
+                            <button onclick="addToCart('${p.name}', ${p.price})" class="w-full bg-orange-500 text-white py-2 rounded-lg mt-2 text-[10px] font-bold">ADD TO CART</button>
+                            ${isStoreManager ? `<button onclick="deleteProduct('${d.id}')" class="text-red-500 text-[9px] mt-1 underline">Delete</button>` : ''}
                         </div>`;
                 });
             });
         }
 
-        // --- PUBLIC CHAT SYSTEM ---
-        window.sendChat = async () => {
-            const msg = document.getElementById('chatInput').value;
-            if(!msg) return;
-            await addDoc(collection(db, "public_chats"), {
-                msg, sender: currentUser.name, senderId: currentUser.id, time: serverTimestamp()
-            });
-            document.getElementById('chatInput').value = "";
+        window.addToCart = (n, p) => {
+            cart.push({name: n, price: p});
+            document.getElementById('cartCount').innerText = cart.length;
         };
 
-        function loadPublicChat() {
-            onSnapshot(query(collection(db, "public_chats"), orderBy("time", "asc")), (snap) => {
-                const box = document.getElementById('chatBox');
-                box.innerHTML = "";
+        // --- 4. ORDER & PAYMENT (KPay/Wave) ---
+        window.checkout = async () => {
+            if(cart.length === 0) return alert("ဈေးခြင်းတောင်းထဲ ပစ္စည်းထည့်ပါ");
+            
+            const total = cart.reduce((s, i) => s + i.price, 0);
+            const paymentType = confirm("KPay/Wave ဖြင့် ပေးချေမှာလား? (OK = Yes, Cancel = Cash on Delivery)");
+            
+            const orderData = {
+                items: cart,
+                total: total,
+                payment: paymentType ? "Mobile Banking" : "COD",
+                status: "Pending",
+                customer: auth.currentUser?.phoneNumber || "Guest",
+                time: serverTimestamp()
+            };
+
+            await addDoc(collection(db, "orders"), orderData);
+            
+            if(paymentType) {
+                alert(`စုစုပေါင်း ${total} ကျပ်ကို KPay: 09xxxxxxx သို့ လွှဲပေးပါ။ Order တင်ပြီးပါပြီ!`);
+            } else {
+                alert("Order တင်ခြင်း အောင်မြင်ပါသည်။");
+            }
+            cart = [];
+            document.getElementById('cartCount').innerText = "0";
+        };
+
+        // --- 5. ORDER CHECKING (ADMIN) ---
+        window.viewOrders = () => {
+            document.getElementById('orderModal').classList.remove('hidden');
+            onSnapshot(query(collection(db, "orders"), orderBy("time", "desc")), (snap) => {
+                const oList = document.getElementById('orderList');
+                oList.innerHTML = "";
                 snap.forEach(d => {
-                    const c = d.data();
-                    const isMe = c.senderId === currentUser.id;
-                    box.innerHTML += `
-                        <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-2">
-                            <div class="${isMe ? 'bg-cyan-600' : 'bg-slate-700'} p-2 px-4 rounded-2xl text-xs max-w-[80%]">
-                                <p class="font-bold opacity-50 text-[10px]">${c.sender}</p>
-                                <p>${c.msg}</p>
-                            </div>
+                    const o = d.data();
+                    oList.innerHTML += `
+                        <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-orange-500 text-[10px]">
+                            <p><b>Phone:</b> ${o.customer}</p>
+                            <p><b>Items:</b> ${o.items.length} ခု</p>
+                            <p><b>Total:</b> ${o.total} MMK (${o.payment})</p>
+                            <button class="bg-green-500 text-white px-2 py-1 rounded mt-1">Confirm Order</button>
                         </div>`;
                 });
-                box.scrollTop = box.scrollHeight;
             });
-        }
-
-        // --- USER WALL SYSTEM ---
-        async function loadUserWall(userId) {
-            onSnapshot(doc(db, "users", userId), (d) => {
-                const u = d.data();
-                document.getElementById('wallHeader').innerHTML = `
-                    <div class="text-center p-6">
-                        <div class="text-6xl mb-2">${u.avatar}</div>
-                        <h2 class="text-xl font-bold">${u.name}</h2>
-                        <p class="text-xs text-slate-400">${u.bio}</p>
-                    </div>`;
-            });
-
-            onSnapshot(query(collection(db, "posts"), where("authorId", "==", userId), orderBy("time", "desc")), (snap) => {
-                const wallPosts = document.getElementById('wallPosts');
-                wallPosts.innerHTML = "";
-                snap.forEach(d => {
-                    const p = d.data();
-                    wallPosts.innerHTML += `
-                        <div class="glass-morphism p-4 rounded-2xl mb-3 text-sm">
-                            ${p.text}
-                        </div>`;
-                });
-            });
-        }
+        };
     </script>
 </head>
-<body class="text-white max-w-md mx-auto h-screen flex flex-col font-sans">
+<body class="bg-slate-50 text-slate-900 font-sans">
 
-    <div id="loginModal" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6 hidden">
-        <div class="glass-morphism p-8 rounded-[2.5rem] w-full text-center">
-            <h2 class="text-xl font-black mb-6 text-cyan-400">JOIN MLBB HUB</h2>
-            <select id="avatar" class="w-full bg-slate-800 p-4 rounded-2xl mb-4 text-3xl outline-none">
-                <option value="🥷">🥷</option><option value="🏹">🏹</option><option value="🧙‍♂️">🧙‍♂️</option>
-            </select>
-            <input type="text" id="nickName" placeholder="သင့်နာမည်..." class="w-full bg-slate-800 p-4 rounded-2xl mb-6 outline-none">
-            <button onclick="joinApp()" class="w-full bg-cyan-500 text-slate-950 py-4 rounded-2xl font-black">START</button>
+    <header class="bg-white p-4 sticky top-0 z-40 flex justify-between items-center shadow-sm border-b border-slate-200">
+        <h1 class="text-xl font-black text-orange-600 italic">MEGA STORE</h1>
+        <div class="flex gap-4 items-center">
+            <button onclick="toggleAdmin()" class="text-[10px] text-slate-400">Admin</button>
+            <div onclick="checkout()" class="relative cursor-pointer bg-slate-100 p-2 rounded-full">
+                🛒 <span id="cartCount" class="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] px-1.5 rounded-full">0</span>
+            </div>
         </div>
-    </div>
-
-    <header class="p-5 glass-morphism sticky top-0 z-50 flex justify-between items-center border-b border-slate-700">
-        <h1 class="font-black italic text-cyan-400 tracking-tighter cursor-pointer" onclick="showSection('feed')">MLBB SOCIAL</h1>
-        <div class="text-[10px] bg-slate-800 px-3 py-1 rounded-full border border-slate-700" onclick="showSection('wall', currentUser.id)">My Wall</div>
     </header>
 
-    <main class="flex-1 overflow-y-auto pb-20">
-        <section id="feedSection" class="p-5 hidden">
-            <div class="glass-morphism p-4 rounded-3xl mb-6">
-                <textarea id="postText" placeholder="ဘာတွေပြောချင်လဲ..." class="w-full bg-transparent outline-none text-sm h-16 resize-none mb-2"></textarea>
-                <button onclick="createPost()" class="w-full bg-cyan-600 py-3 rounded-xl text-xs font-black shadow-lg">POST</button>
-            </div>
-            <div id="feedArea"></div>
-        </section>
-
-        <section id="chatSection" class="p-5 hidden h-full flex flex-col">
-            <div id="chatBox" class="flex-1 overflow-y-auto mb-4 space-y-2 p-2 glass-morphism rounded-3xl h-[60vh]"></div>
-            <div class="flex gap-2 glass-morphism p-2 rounded-2xl">
-                <input type="text" id="chatInput" placeholder="စာရိုက်ပါ..." class="flex-1 bg-transparent p-2 outline-none text-xs">
-                <button onclick="sendChat()" class="bg-cyan-600 px-6 py-2 rounded-xl font-bold text-xs">SEND</button>
+    <main class="p-4 max-w-md mx-auto">
+        <section id="adminPanel" class="hidden bg-white p-5 rounded-3xl mb-6 shadow-xl border-2 border-orange-500">
+            <h2 class="text-sm font-bold mb-4 text-orange-600">Admin: Add Product</h2>
+            <input type="text" id="pName" placeholder="Product Name" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
+            <input type="number" id="pPrice" placeholder="Price (MMK)" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
+            <input type="text" id="pImg" placeholder="Image URL" class="w-full bg-slate-100 p-3 rounded-xl mb-2 text-xs outline-none">
+            <textarea id="pDesc" placeholder="Description" class="w-full bg-slate-100 p-3 rounded-xl mb-3 text-xs outline-none"></textarea>
+            <div class="flex gap-2">
+                <button onclick="addProduct()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold text-xs">Add Product</button>
+                <button onclick="viewOrders()" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold text-xs">Check Orders</button>
             </div>
         </section>
 
-        <section id="wallSection" class="hidden">
-            <div id="wallHeader" class="glass-morphism mb-4"></div>
-            <div class="p-5">
-                <h3 class="text-[10px] font-bold text-cyan-400 mb-4 uppercase">Posts by User</h3>
-                <div id="wallPosts"></div>
-            </div>
-        </section>
+        <h2 class="font-black text-lg mb-4 text-slate-800 tracking-tight">Daily Picks</h2>
+        <div id="productList" class="grid grid-cols-2 gap-3"></div>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 glass-morphism p-4 flex justify-around text-[10px] font-black z-50 max-w-md mx-auto">
-        <button onclick="showSection('feed')" class="flex flex-col items-center">🏠<span>FEED</span></button>
-        <button onclick="showSection('chat')" class="flex flex-col items-center">💬<span>CHAT</span></button>
-        <button onclick="showSection('wall', currentUser.id)" class="flex flex-col items-center">👤<span>WALL</span></button>
-    </nav>
+    <div id="orderModal" class="fixed inset-0 bg-black/50 z-[100] hidden p-6 overflow-y-auto">
+        <div class="bg-white p-6 rounded-[2rem] w-full">
+            <div class="flex justify-between mb-4">
+                <h2 class="font-bold">Recent Orders</h2>
+                <button onclick="document.getElementById('orderModal').classList.add('hidden')" class="text-red-500 font-bold">Close</button>
+            </div>
+            <div id="orderList"></div>
+        </div>
+    </div>
 
 </body>
 </html>
